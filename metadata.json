@@ -1,0 +1,6 @@
+{
+  "name": "Sims 4 Mod Builder",
+  "description": "A modern, neurodivergent-friendly web tool for creating Sims 4 traits, buffs, and interactions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

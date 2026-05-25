@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #FFF0F5;      /* Blush Cream */
+  --color-bg-secondary: #F4C0D1;    /* Petal Pink */
+  --color-tertiary: #D4547E;        /* Queen Pink */
+  --color-accent: #E8A020;          /* Honey Gold */
+  --color-surface-light: #FAEEDA;   /* Honeycomb */
+  --color-text: #2C1810;            /* Hive Dark */
+  --color-border: #89B9D0;          /* Gentle Blue */
+  --color-border-light: #A8CBE5;    /* Gentle Blue lighter */
+  
+  --font-sans: "Inter", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--color-bg-primary)] text-[var(--color-text)] font-sans antialiased min-h-screen;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight text-[var(--color-text)];
+  }
+
+  button {
+    @apply cursor-pointer transition-all duration-200;
+  }
+}
+
+.wizard-container {
+  @apply max-w-[800px] mx-auto px-6 py-12;
+}
+
+.card-fancy {
+  @apply bg-[var(--color-bg-secondary)] border-2 border-[var(--color-border)] rounded-2xl p-8 shadow-sm;
+}
+
