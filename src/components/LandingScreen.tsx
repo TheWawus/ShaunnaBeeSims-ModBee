@@ -60,6 +60,7 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
     try {
       console.log('Starting multi-file import...');
       const allResources: any[] = [];
+      const allLinks: { source: string; target: string; type: string }[] = [];
       let combinedScriptContent = '';
 
       for (const file of Array.from(files) as File[]) {
@@ -83,6 +84,10 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
           for (const pyFile of pyFiles) {
             const content = await pyFile.async('string');
             combinedScriptContent += `\n# --- From ${file.name}/${pyFile.name} ---\n${content}\n`;
+            
+            // Extract links from Python
+            const links = extractInjectionsFromPython(content);
+            allLinks.push(...links);
           }
         }
       }
@@ -115,6 +120,7 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
             },
             elements,
             scriptContent: combinedScriptContent || undefined,
+            links: allLinks,
             activeElementId: elements[0].id
           }
         });
@@ -295,4 +301,44 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
       )}
     </div>
   );
+}
+
+/**
+ * Extracts dependency links from Python injection scripts.
+ */
+function extractInjectionsFromPython(python: string): { source: string; target: string; type: string }[] {
+  const links: { source: string; target: string; type: string }[] = [];
+  
+  // Pattern 1: Simple SNIPPET_ID and MIXER_IDS
+  const snippetMatch = python.match(/SNIPPET_ID\s*=\s*(\d+)/);
+  const mixerMatch = python.match(/MIXER_IDS\s*=\s*\(([^)]+)\)/);
+  if (snippetMatch && mixerMatch) {
+    const sId = snippetMatch[1];
+    const mIds = mixerMatch[1].split(',').map(s => s.trim().replace(/L$/, '')).filter(Boolean);
+    mIds.forEach(mId => {
+       links.push({ source: `MixerInteraction_${mId}`, target: `Snippet_${sId}`, type: 'injection' });
+    });
+  }
+
+  // Pattern 2: INJECTION_MAP = { id: (id, id), ... }
+  const mapMatch = python.match(/INJECTION_MAP\s*=\s*\{([\s\S]*?)\}/);
+  if (mapMatch) {
+    const entries = mapMatch[1].split('\n').map(l => l.trim()).filter(l => l.includes(':'));
+    entries.forEach(entry => {
+      const parts = entry.split(':');
+      if (parts.length >= 2) {
+        // Clean up key and values
+        const sId = parts[0].trim().replace(/[^0-9]/g, '');
+        const mIdsMatch = parts[1].match(/\(([^)]+)\)/);
+        if (mIdsMatch) {
+          const mIds = mIdsMatch[1].split(',').map(s => s.trim().replace(/L$/, '')).filter(Boolean);
+          mIds.forEach(mId => {
+             links.push({ source: `MixerInteraction_${mId}`, target: `Snippet_${sId}`, type: 'injection' });
+          });
+        }
+      }
+    });
+  }
+
+  return links;
 }

@@ -36,6 +36,7 @@ export interface ModProjectState {
   elements: ModElement[];
   activeElementId?: string;
   scriptContent?: string;
+  links?: { source: string; target: string; type: string }[];
 }
 
 // Schema Types

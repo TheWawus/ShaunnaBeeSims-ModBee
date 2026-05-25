@@ -13,7 +13,7 @@ function toStblRef(id: number | bigint): string {
  * Generates a consistent instance ID for an element.
  * Tries to extract numeric ID from imported elements or hashes the internal name.
  */
-function getInstanceId(el: any, allElements?: ModElement[]): bigint {
+export function getInstanceId(el: any, allElements?: ModElement[]): bigint {
   const id = typeof el === 'string' ? el : (el.id || '');
   
   // If we have access to all elements, try to find the full element object first

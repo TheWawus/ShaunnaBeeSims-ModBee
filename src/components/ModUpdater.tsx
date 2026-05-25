@@ -88,6 +88,7 @@ export interface TuningIssue {
   validOptions?: string[];
   message: string;
   autoFixable: boolean;
+  isHashMismatch?: boolean;
 }
 
 interface ResourceReport {
@@ -152,6 +153,36 @@ async function fetchTdesc(className: string): Promise<TdescSchema | null> {
 
   tdescCache.set(className, null);
   return null;
+}
+
+/**
+ * Fetches the latest instance hash for an EA resource ID from TDESC.
+ */
+async function fetchLatestHash(id: string): Promise<string | null> {
+  try {
+    // Note: This API endpoint is a best-guess based on TDESC standards
+    const url = `${TDESC_BASE}/api/v1/tuning/${id}/hash`;
+    const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
+    const res = await fetch(proxiedUrl);
+    if (res.ok) {
+      const data = await res.json();
+      return data.hash ?? null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/**
+ * Heuristic to calculate a simple hash for local tuning XML
+ */
+function calculateTuningHash(xml: string): string {
+  // Strip whitespace and comments for comparison
+  const clean = xml.replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, '');
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = (Math.imul(31, hash) + clean.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(16);
 }
 
 function parseTdesc(className: string, xml: string): TdescSchema {
@@ -392,6 +423,10 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
         const buffer = await file.arrayBuffer();
         fileBuffers.current.set(file.name, buffer);
 
+        if (!file.name.toLowerCase().endsWith('.package')) {
+          continue; // Skip .ts4script for now in the updater scan
+        }
+
         let resources: DBPFResource[];
         try {
           resources = parsePackage(buffer);
@@ -416,6 +451,24 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
           } catch { /* schema stays null */ }
 
           const issues = schema ? diffTuning(t, schema) : [];
+
+          // Issue 2 Fix: Check if this is an EA resource reference and check its hash
+          // (Instances with IDs < 0x0100000000000000 are usually considered EA instances)
+          const instanceIdBig = BigInt(t.instanceId);
+          if (instanceIdBig < 0x0100000000000000n && t.instanceId !== '0') {
+             const latestHash = await fetchLatestHash(t.instanceId);
+             const localHash = calculateTuningHash(t.rawXml);
+             
+             if (latestHash && latestHash !== localHash) {
+                issues.push({
+                   kind: 'deprecated_field',
+                   fieldName: 'Instance Hash',
+                   message: `This EA Tuning (ID: ${t.instanceId}) has been updated in a patch. Your version is outdated.`,
+                   autoFixable: false,
+                   isHashMismatch: true
+                });
+             }
+          }
 
           const report: ResourceReport = {
             resource: t,
@@ -511,6 +564,8 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
       }
 
       for (const [filename, buffer] of fileBuffers.current) {
+        if (!filename.toLowerCase().endsWith('.package')) continue;
+        
         const patched = await rebuildPackage(buffer, patches);
         downloadBytes(patched, filename.replace('.package', '_updated.package'));
       }

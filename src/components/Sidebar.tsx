@@ -160,6 +160,7 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
               filteredElements.map(el => {
                 const schema = ELEMENT_SCHEMAS[el.type];
                 const isActive = state.activeElementId === el.id;
+                const isInjected = state.links?.some(l => l.source === el.id || l.source.includes(el.id.split('_')[1]));
                 return (
                   <div key={el.id} className="relative group">
                     <button
@@ -178,7 +179,14 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
                         )}
                       </div>
                       <div className="flex-1 overflow-hidden pr-6">
-                        <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-40 mb-1">{el.type}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-40">{el.type}</p>
+                          {isInjected && (
+                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-black uppercase rounded-full tracking-widest border border-blue-200" title="Automatically injected via .ts4script">
+                              Injected
+                            </span>
+                          )}
+                        </div>
                         <p className={`font-black uppercase tracking-tight truncate ${isActive ? 'text-[var(--color-tertiary)]' : 'text-gray-600'}`}>
                           {getElementDisplayName(el)}
                         </p>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useModProject } from '../context/ModProjectContext';
 import { buildPackage, downloadPackage } from '../lib/dbpf';
-import { runExportPipeline } from '../lib/serializers';
-import { createTs4Script } from '../lib/scriptGenerator';
+import { runExportPipeline, getInstanceId } from '../lib/serializers';
+import { createTs4Script, generatePythonScript } from '../lib/scriptGenerator';
 
 export function Step5Building() {
   const { state } = useModProject();
@@ -19,10 +19,48 @@ export function Step5Building() {
         const pkg = buildPackage(resources);
         downloadPackage(pkg, state.modInfo.modName || 'MyMod');
 
-        // Handle script mod if content exists
+        // Handle script mod
+        let finalScriptPkg: Uint8Array | null = null;
+
         if (state.scriptContent) {
-           const scriptPkg = await createTs4Script(state.modInfo.modName, state.scriptContent);
-           const blob = new Blob([scriptPkg], { type: 'application/zip' });
+           finalScriptPkg = await createTs4Script(state.modInfo.modName, state.scriptContent);
+        } else {
+           // Auto-generate script if we have MixerInteractions and links (or we can infer them)
+           const injections: { snippetId: number | string; mixerIds: (number | bigint | string)[] }[] = [];
+           
+           if (state.links) {
+              const injectionLinks = state.links.filter(l => l.type === 'injection');
+              const grouped: Record<string, string[]> = {};
+              
+              injectionLinks.forEach(link => {
+                const sId = link.target.replace('Snippet_', '');
+                if (!grouped[sId]) grouped[sId] = [];
+                grouped[sId].push(link.source.replace('MixerInteraction_', ''));
+              });
+
+              Object.entries(grouped).forEach(([sId, mIds]) => {
+                 injections.push({ snippetId: sId, mixerIds: mIds });
+              });
+           }
+
+           // If no links but we have mixer interactions, try to guess (MC5 default for social traits)
+           if (injections.length === 0) {
+              const mixers = state.elements.filter(el => el.type === 'MixerInteraction');
+              if (mixers.length > 0) {
+                 const mixerIds = mixers.map(m => getInstanceId(m, state.elements));
+                 // Default to social_group_basic_socials (163706) if it's likely a social mod
+                 injections.push({ snippetId: 163706, mixerIds });
+              }
+           }
+
+           if (injections.length > 0) {
+              const autoScript = generatePythonScript(state.modInfo.modName, injections);
+              finalScriptPkg = await createTs4Script(state.modInfo.modName, autoScript);
+           }
+        }
+
+        if (finalScriptPkg) {
+           const blob = new Blob([finalScriptPkg], { type: 'application/zip' });
            const url = URL.createObjectURL(blob);
            const a = document.createElement('a');
            a.href = url;
