@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useModProject } from '../context/ModProjectContext';
 import { parsePackage } from '../lib/dbpf';
 import { importFromPackage } from '../lib/importer';
+import { ModUpdater } from './ModUpdater';
 import JSZip from 'jszip';
 
 interface LandingScreenProps {
@@ -14,6 +15,7 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTutorialPrompt, setShowTutorialPrompt] = useState(false);
+  const [showUpdater, setShowUpdater] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [selectedTourMode, setSelectedTourMode] = useState<'basic' | 'advanced' | null>(null);
 
@@ -206,7 +208,28 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
               <p className="opacity-60 text-lg leading-relaxed">Load direct .package and .ts4script files to edit.</p>
             </div>
           </div>
+
+          {/* Update Your Mods - New Feature */}
+          <button
+            onClick={() => setShowUpdater(true)}
+            className="md:col-span-2 group relative flex items-center gap-10 p-8 bg-white border-4 border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl hover:border-indigo-400 hover:-translate-y-1 transition-all cursor-pointer"
+          >
+            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center shadow-inner group-hover:bg-indigo-100 transition-colors overflow-hidden shrink-0">
+               <img src="/gears.png" className="w-12 h-12 object-contain" alt="Update" />
+            </div>
+            <div className="text-left">
+              <div className="text-2xl font-black mb-1">Update Your Mods</div>
+              <p className="opacity-60 text-base leading-relaxed">Batch verify and patch mods for the latest game version.</p>
+            </div>
+            <div className="ml-auto px-6 py-3 bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg group-hover:scale-105 transition-transform">
+               Beta
+            </div>
+          </button>
         </div>
+      )}
+
+      {showUpdater && (
+        <ModUpdater onClose={() => setShowUpdater(false)} />
       )}
 
 

@@ -65,13 +65,18 @@ export function ModOrganiser() {
 
     const links: Link[] = [];
     state.elements.forEach(el => {
-      // Very basic connection detection based on field values that match IDs
-      Object.values(el.data).forEach(val => {
-        if (typeof val === 'string' && val.includes('_') && state.elements.some(e => e.id === val)) {
+      // Robust connection detection based on field values that match other element IDs
+      Object.entries(el.data).forEach(([key, val]) => {
+        // Skip some fields that shouldn't be links
+        if (key === 'internal_name' || key === 'display_name' || key === 'icon') return;
+
+        const isReference = (id: string) => state.elements.some(e => e.id === id);
+
+        if (typeof val === 'string' && isReference(val)) {
           links.push({ source: el.id, target: val });
         } else if (Array.isArray(val)) {
           val.forEach(item => {
-            if (typeof item === 'string' && state.elements.some(e => e.id === item)) {
+            if (typeof item === 'string' && isReference(item)) {
               links.push({ source: el.id, target: item });
             }
           });

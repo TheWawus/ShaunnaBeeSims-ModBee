@@ -31,11 +31,19 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'ADULT', label: 'Adult' },
         { value: 'ELDER', label: 'Elder' }
       ]},
+      { id: 'cas_category', label: 'CAS Category', type: 'enum', advanced: true, options: [
+        { value: 'PRIMARY', label: 'Primary (Personality)' },
+        { value: 'LIFESTYLE', label: 'Lifestyle' },
+        { value: 'SOCIAL', label: 'Social' },
+        { value: 'MENTAL', label: 'Mental' }
+      ], default: 'PRIMARY' },
+      { id: 'walkstyle', label: 'Walkstyle Override', type: 'string', advanced: true, description: 'S4S internal name for walkstyle.' },
       { id: 'icon', label: 'Trait Icon', type: 'resource', description: '128x128 image resource.' },
       { id: 'disable_aging', label: 'No Aging', type: 'boolean', description: 'Sims with this trait will not age.' },
       { id: 'voice_effect', label: 'Voice Effect', type: 'string', description: 'e.g. Ghost, Alien, Robot' },
       { id: 'permanent_buff', label: 'Permanent Hidden Buff', type: 'reference', targetType: 'Buff', description: 'Adds commodities or modifiers.' },
       { id: 'conflicting_traits', label: 'Conflicts With', type: 'list', targetType: 'Trait' },
+      { id: 'whims', label: 'Whim Set', type: 'reference', targetType: 'CustomTuningElement', advanced: true },
       { id: 'tags', label: 'Search Tags', type: 'multiEnum', options: [
         { value: 'TraitPersonality', label: 'Personality' },
         { value: 'TraitLifestyle', label: 'Lifestyle' },
@@ -73,8 +81,11 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'Embarrassed', label: 'Embarrassed' }
       ] },
       { id: 'mood_weight', label: 'Emotion Weight', type: 'integer', default: 1 },
-      { id: 'duration', label: 'Duration (Minutes)', type: 'integer', default: 0, description: 'Set to 0 for infinite duration.' },
-      { id: 'visible', label: 'Visible in UI', type: 'boolean', default: true }
+      { id: 'duration', label: 'Duration (Minutes)', type: 'integer', default: 0, description: 'Set to 0 for infinite duration. (Game minute unit)' },
+      { id: 'visible', label: 'Visible in UI', type: 'boolean', default: true },
+      { id: 'decay_modifiers', label: 'Decay Modifiers', type: 'string', advanced: true, description: 'Multiply decay of specific stats (Format: StatName:Mult, ... or raw XML list)' },
+      { id: 'stat_asm_modifiers', label: 'Skill Gain Boosts', type: 'string', advanced: true, description: 'Boost skill learning rates.' },
+      { id: 'whims', label: 'Whim Set', type: 'reference', targetType: 'CustomTuningElement', advanced: true }
     ]
   },
   XmlInjectorSnippet: {
@@ -123,8 +134,14 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'buff', label: 'Apply Buff' },
         { value: 'buff_removal', label: 'Remove Buff' },
         { value: 'know_trait', label: 'Learn Trait' },
-        { value: 'stat_set_max', label: 'Reset Commodity' }
+        { value: 'remove_trait', label: 'Remove Trait' },
+        { value: 'stat_set_max', label: 'Reset Commodity' },
+        { value: 'money', label: 'Money Reward' },
+        { value: 'statistic_change', label: 'Stat Change' },
+        { value: 'skill_level_change', label: 'Skill Level Change' },
+        { value: 'relationship_bit', label: 'Relationship Bit Add' }
       ]},
+      { id: 'amount', label: 'Amount (Money/Stat)', type: 'integer', default: 0, advanced: true },
       { id: 'buff_ref', label: 'Buff Target', type: 'reference', targetType: 'Buff' },
       { id: 'trait_ref', label: 'Trait Target', type: 'reference', targetType: 'Trait' },
       { id: 'stat_ref', label: 'Statistic/Commodity Target', type: 'reference', targetType: 'Commodity' },
@@ -165,7 +182,11 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'Flirty', label: 'Flirty' },
         { value: 'Funny', label: 'Funny' }
       ]},
-      { id: 'icon', label: 'Pie Menu Icon', type: 'resource' }
+      { id: 'icon', label: 'Pie Menu Icon', type: 'resource' },
+      { id: 'loot_on_success', label: 'Loot on Success', type: 'reference', targetType: 'LootActionSet', advanced: true },
+      { id: 'loot_on_failure', label: 'Loot on Failure', type: 'reference', targetType: 'LootActionSet', advanced: true },
+      { id: 'success_weight', label: 'Base Success Weight', type: 'integer', default: 100, advanced: true },
+      { id: 'animation_ref', label: 'Animation Clip', type: 'string', advanced: true, description: 'S4S internal animation name.' }
     ]
   },
   SuperInteraction: {
@@ -173,10 +194,12 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
     label: 'Super Interaction',
     icon: '/simscrystal.png',
     category: 'Gameplay',
-    description: 'A top-level interaction (Experimental).',
+    description: 'A top-level interaction performed on an object or Sim.',
     fields: [
       { id: 'internal_name', label: 'Internal Name', type: 'string' },
-      { id: 'display_name', label: 'Display Name', type: 'string' }
+      { id: 'display_name', label: 'Display Name', type: 'string' },
+      { id: 'allow_autonomous', label: 'Allow Autonomous', type: 'boolean', default: true },
+      { id: 'outcome_loot', label: 'Outcome Loot', type: 'reference', targetType: 'LootActionSet', advanced: true }
     ]
   },
   ActionTrigger: {
@@ -191,7 +214,11 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'ON_BUFF_ADD', label: 'On Buff Added' },
         { value: 'ON_SIM_SPARED', label: 'On Sim Spared' },
         { value: 'ON_STAT_CHANGE', label: 'On Stat Changed' }
-      ]}
+      ]},
+      { id: 'trigger_target_ref', label: 'Target (Buff/Stat)', type: 'reference', targetType: 'Buff', advanced: true },
+      { id: 'threshold', label: 'Stat Threshold', type: 'float', default: 0, advanced: true },
+      { id: 'loot_list', label: 'Loot Action to Fire', type: 'reference', targetType: 'LootActionSet', advanced: true },
+      { id: 'sim_filter', label: 'Sim Filter Scope', type: 'reference', targetType: 'SimFilter', advanced: true }
     ]
   },
   AspirationCategory: {

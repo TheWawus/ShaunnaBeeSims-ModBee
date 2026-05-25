@@ -1,5 +1,6 @@
 import React from 'react';
 import { getElementDisplayName } from '../../lib/utils';
+import { ELEMENT_SCHEMAS } from '../../lib/schemas';
 
 interface FieldProps {
   label: string;
@@ -206,24 +207,63 @@ export function BooleanToggle({ value, onChange, id }: any) {
 }
 
 export function ReferenceSelect({ value, onChange, targetType, state, id }: any) {
-  const options = state.elements
-    .filter((el: any) => el.type === targetType)
-    .map((el: any) => ({
+  const elements = state.elements.filter((el: any) => el.type === targetType);
+  
+  const options = elements.map((el: any) => {
+    const displayName = getElementDisplayName(el);
+    const internalName = el.data?.internal_name;
+    const label = internalName && internalName !== displayName 
+      ? `${displayName} (${internalName})` 
+      : displayName;
+    
+    return {
       value: el.id,
-      label: getElementDisplayName(el)
-    }));
+      label: label,
+      icon: ELEMENT_SCHEMAS[el.type]?.icon
+    };
+  });
 
   return (
     <div id={id} className="space-y-4">
-      <Select 
-        value={value} 
-        onChange={onChange} 
-        options={[{ value: '', label: `-- Select ${targetType} --` }, ...options]} 
-      />
+      <div className="relative">
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full p-5 bg-[var(--color-bg-primary)] border-4 border-[var(--color-border)] rounded-2xl text-xl font-black focus:border-[var(--color-tertiary)] outline-none transition-all appearance-none pr-12 cursor-pointer shadow-sm hover:shadow-md"
+        >
+          <option value="">-- Select {targetType} --</option>
+          {options.map((opt: any) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-xl opacity-40">
+          ▼
+        </div>
+      </div>
+      
       {options.length === 0 && (
-        <p className="text-sm text-amber-600 font-bold px-4">
-          ⚠️ No {targetType} elements found in project. Create one first!
+        <p className="text-sm text-amber-600 font-bold px-4 flex items-center gap-2">
+          <span className="text-lg">⚠️</span>
+          No {targetType} elements found in project. Create one first!
         </p>
+      )}
+      
+      {value && elements.find((e:any) => e.id === value) && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-xl border-2 border-slate-100">
+          <span className="text-xs font-black uppercase text-slate-400">Linked:</span>
+          {(() => {
+            const el = elements.find((e:any) => e.id === value);
+            const icon = ELEMENT_SCHEMAS[el.type]?.icon;
+            return (
+              <div className="flex items-center gap-2">
+                {icon && <img src={icon} className="w-5 h-5 object-contain" alt="" />}
+                <span className="text-sm font-bold text-slate-700">{getElementDisplayName(el)}</span>
+              </div>
+            );
+          })()}
+        </div>
       )}
     </div>
   );

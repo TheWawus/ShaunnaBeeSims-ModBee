@@ -1,12 +1,41 @@
+import { useState } from 'react';
 import { ELEMENT_SCHEMAS } from '../../lib/schemas';
 import { useModProject } from '../../context/ModProjectContext';
 import { FieldWrapper, TextInput, TextArea, Select, MultiSelect, NumberInput, BooleanToggle, ReferenceSelect } from './SharedFields';
+import { SimPreview } from '../SimPreview';
+import { Play } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
 
 export function AutoEditor({ type, data, onChange }: any) {
   const { state } = useModProject();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  
   const schema = ELEMENT_SCHEMAS[type];
 
   if (!schema) return <div className="p-12 text-center opacity-30 uppercase font-black tracking-widest">No Schema for {type}</div>;
+
+  const visibleFields = schema.fields.filter(f => !f.advanced || showAdvanced);
+  const hasAdvancedFields = schema.fields.some(f => f.advanced);
+
+  // Helper to find connected elements (for AI context)
+  const getConnectedElements = () => {
+    const connected: any[] = [];
+    Object.values(data).forEach(val => {
+      if (typeof val === 'string' && val.includes('_')) {
+        const found = state.elements.find(e => e.id === val);
+        if (found) connected.push(found);
+      } else if (Array.isArray(val)) {
+        val.forEach(v => {
+          if (typeof v === 'string') {
+            const found = state.elements.find(e => e.id === v);
+            if (found) connected.push(found);
+          }
+        });
+      }
+    });
+    return connected;
+  };
 
   const renderField = (field: any) => {
     const value = data[field.id] ?? field.default ?? '';
@@ -49,7 +78,7 @@ export function AutoEditor({ type, data, onChange }: any) {
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <div className="grid grid-cols-1 gap-6">
-        {schema.fields.map(field => (
+        {visibleFields.map(field => (
           <FieldWrapper 
             key={field.id}
             label={field.label}
@@ -61,6 +90,41 @@ export function AutoEditor({ type, data, onChange }: any) {
           </FieldWrapper>
         ))}
       </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-12 border-t-4 border-dashed border-slate-100">
+        <button 
+          onClick={() => setShowPreview(true)}
+          className="px-10 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group"
+        >
+          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform">
+             <Play size={18} fill="currentColor" />
+          </div>
+          Preview in Game
+        </button>
+
+        {hasAdvancedFields && (
+          <button 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`px-8 py-5 rounded-3xl font-black uppercase text-xs tracking-widest transition-all shadow-lg active:scale-95 border-4 ${
+              showAdvanced 
+                ? 'bg-slate-800 border-slate-800 text-white hover:bg-slate-900' 
+                : 'bg-white border-slate-800 text-slate-800 hover:bg-slate-50'
+            }`}
+          >
+            {showAdvanced ? 'Hide Advanced Settings' : 'Advanced Mode'}
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showPreview && (
+          <SimPreview 
+            element={{ type, data, id: state.activeElementId }} 
+            allElements={state.elements}
+            onClose={() => setShowPreview(false)} 
+          />
+        )}
+      </AnimatePresence>
 
       {schema.fields.length === 0 && (
         <div className="p-20 bg-white/40 border-4 border-dashed border-[var(--color-border)] rounded-[3rem] opacity-40 text-center">
