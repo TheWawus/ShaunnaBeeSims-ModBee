@@ -255,11 +255,23 @@ export function importFromPackage(resources: DBPFResource[]): any {
           }
       }
 
-      elements.push({
-        id: `${type}_${instanceFullId || Math.random().toString(36).substr(2, 9)}`,
-        type: type,
-        data: elementData
-      });
+        const normalizeToHex = (id: string | null) => {
+          if (!id || id === 'None') return '';
+          try {
+            if (id.startsWith('0x')) return id.substring(2).toLowerCase();
+            return BigInt(id).toString(16).toLowerCase();
+          } catch {
+            return id.toLowerCase();
+          }
+        };
+
+        const hexId = normalizeToHex(instanceFullId);
+
+        elements.push({
+          id: `${type}_${hexId || Math.random().toString(36).substr(2, 9)}`,
+          type: type,
+          data: elementData
+        });
     } catch (err) {
       console.error('Failed to process tuning resource:', err);
     }

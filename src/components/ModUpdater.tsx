@@ -156,33 +156,44 @@ async function fetchTdesc(className: string): Promise<TdescSchema | null> {
 }
 
 /**
- * Fetches the latest instance hash for an EA resource ID from TDESC.
+ * Checks a resource against its TDESC schema using the pack flag (pf) versioning.
  */
-async function fetchLatestHash(id: string): Promise<string | null> {
-  try {
-    // Note: This API endpoint is a best-guess based on TDESC standards
-    const url = `${TDESC_BASE}/api/v1/tuning/${id}/hash`;
-    const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
-    const res = await fetch(proxiedUrl);
-    if (res.ok) {
-      const data = await res.json();
-      return data.hash ?? null;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
+async function checkResourceAgainstTdesc(tuned: TunedResource): Promise<{ upToDate: boolean; message?: string }> {
+  // The mod's XML has: <I c="Trait" m="..." n="..." s="<instanceId>" pf="<packFlag>">
+  const modPf = tuned.dom.querySelector('I')?.getAttribute('pf');
+  
+  const schema = await fetchTdesc(tuned.className);
+  if (!schema) return { upToDate: true };
 
-/**
- * Heuristic to calculate a simple hash for local tuning XML
- */
-function calculateTuningHash(xml: string): string {
-  // Strip whitespace and comments for comparison
-  const clean = xml.replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, '');
-  let hash = 0;
-  for (let i = 0; i < clean.length; i++) {
-    hash = (Math.imul(31, hash) + clean.charCodeAt(i)) | 0;
+  // Parse the pf from the fetched TDESC root element
+  const tdescParser = new DOMParser();
+  const tdescDoc = tdescParser.parseFromString(schema.rawTdesc, 'text/xml');
+  const troot = tdescDoc.querySelector('I');
+  const tdescPf = troot?.getAttribute('pf');
+  
+  // If we have a TDESC pf and it differs from mod (or mod is missing pf), it's potentially outdated
+  if (tdescPf && modPf !== tdescPf) {
+    return { 
+      upToDate: false, 
+      message: `Tuning version mismatch. Game: ${tdescPf}, Mod: ${modPf || '0'}. Tuning logic may have changed.` 
+    };
   }
-  return (hash >>> 0).toString(16);
+
+  // Heuristic: Check if the number of top-level tunable fields has changed significantly
+  const modFields = Array.from(tuned.dom.querySelector('I')?.children || []).filter(c => c.getAttribute('n')).length;
+  const tdescFields = Array.from(troot?.children || []).filter(c => c.getAttribute('n')).length;
+  
+  // This is a proxy for "The game has added or removed tunables for this instance"
+  // only applicable if the mod is an EA resource override (usually IDs < 10^16)
+  const isEAResource = BigInt(tuned.instanceId) < 0x0100000000000000n;
+  if (isEAResource && modFields > 0 && tdescFields > 0 && modFields !== tdescFields) {
+     return { 
+       upToDate: false, 
+       message: `Structure mismatch: Game has ${tdescFields} tunables, your mod has ${modFields}. Highly likely outdated.` 
+     };
+  }
+
+  return { upToDate: true };
 }
 
 function parseTdesc(className: string, xml: string): TdescSchema {
@@ -452,22 +463,16 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
 
           const issues = schema ? diffTuning(t, schema) : [];
 
-          // Issue 2 Fix: Check if this is an EA resource reference and check its hash
-          // (Instances with IDs < 0x0100000000000000 are usually considered EA instances)
-          const instanceIdBig = BigInt(t.instanceId);
-          if (instanceIdBig < 0x0100000000000000n && t.instanceId !== '0') {
-             const latestHash = await fetchLatestHash(t.instanceId);
-             const localHash = calculateTuningHash(t.rawXml);
-             
-             if (latestHash && latestHash !== localHash) {
-                issues.push({
-                   kind: 'deprecated_field',
-                   fieldName: 'Instance Hash',
-                   message: `This EA Tuning (ID: ${t.instanceId}) has been updated in a patch. Your version is outdated.`,
-                   autoFixable: false,
-                   isHashMismatch: true
-                });
-             }
+          // Issue 2 Fix: Check if this resource is outdated using pack versions (pf)
+          const checkResult = await checkResourceAgainstTdesc(t);
+          if (!checkResult.upToDate) {
+            issues.push({
+              kind: 'deprecated_field',
+              fieldName: 'Tuning Version',
+              message: checkResult.message || `This resource may be outdated.`,
+              autoFixable: false,
+              isHashMismatch: true
+            });
           }
 
           const report: ResourceReport = {

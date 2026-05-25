@@ -308,36 +308,41 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
  */
 function extractInjectionsFromPython(python: string): { source: string; target: string; type: string }[] {
   const links: { source: string; target: string; type: string }[] = [];
-  
-  // Pattern 1: Simple SNIPPET_ID and MIXER_IDS
-  const snippetMatch = python.match(/SNIPPET_ID\s*=\s*(\d+)/);
-  const mixerMatch = python.match(/MIXER_IDS\s*=\s*\(([^)]+)\)/);
-  if (snippetMatch && mixerMatch) {
-    const sId = snippetMatch[1];
-    const mIds = mixerMatch[1].split(',').map(s => s.trim().replace(/L$/, '')).filter(Boolean);
-    mIds.forEach(mId => {
-       links.push({ source: `MixerInteraction_${mId}`, target: `Snippet_${sId}`, type: 'injection' });
-    });
+
+  // MC5 pattern: <Prefix>_<numericKey>_SnippetId = <snippetDecimalId>
+  //              <Prefix>_<numericKey>_MixerId = (<mixerId1>,<mixerId2>,)
+  const snippetMatches = [...python.matchAll(/\w+?_(\d+)_SnippetId\s*=\s*(\d+)/g)];
+  const mixerMatches   = [...python.matchAll(/\w+?_(\d+)_MixerId\s*=\s*\(([^)]+)\)/g)];
+
+  // Index snippet declarations by their numeric key
+  const snippetMap = new Map<string, string>(); // key -> snippetDecimalId
+  for (const m of snippetMatches) {
+    snippetMap.set(m[1], m[2]); // e.g. "163706" -> "163706"
   }
 
-  // Pattern 2: INJECTION_MAP = { id: (id, id), ... }
-  const mapMatch = python.match(/INJECTION_MAP\s*=\s*\{([\s\S]*?)\}/);
-  if (mapMatch) {
-    const entries = mapMatch[1].split('\n').map(l => l.trim()).filter(l => l.includes(':'));
-    entries.forEach(entry => {
-      const parts = entry.split(':');
-      if (parts.length >= 2) {
-        // Clean up key and values
-        const sId = parts[0].trim().replace(/[^0-9]/g, '');
-        const mIdsMatch = parts[1].match(/\(([^)]+)\)/);
-        if (mIdsMatch) {
-          const mIds = mIdsMatch[1].split(',').map(s => s.trim().replace(/L$/, '')).filter(Boolean);
-          mIds.forEach(mId => {
-             links.push({ source: `MixerInteraction_${mId}`, target: `Snippet_${sId}`, type: 'injection' });
-          });
+  for (const m of mixerMatches) {
+    const key = m[1];
+    const snippetId = snippetMap.get(key);
+    if (!snippetId) continue;
+
+    const mixerIds = m[2].split(',').map(s => s.trim()).filter(Boolean);
+    for (const mixerId of mixerIds) {
+      // Convert IDs to hex for consistency with project state
+      const normalizeId = (id: string) => {
+        try {
+          if (id.startsWith('0x')) return id.substring(2).toLowerCase();
+          return BigInt(id.replace(/L$/, '')).toString(16).toLowerCase();
+        } catch {
+          return id.toLowerCase();
         }
-      }
-    });
+      };
+
+      links.push({
+        source: `MixerInteraction_${normalizeId(mixerId)}`,
+        target: `Snippet_${normalizeId(snippetId)}`,
+        type: 'injection'
+      });
+    }
   }
 
   return links;
