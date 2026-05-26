@@ -133,6 +133,7 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'buff', label: 'Apply Buff (buff_loot_op)' },
         { value: 'buff_removal', label: 'Remove Buff (buff_removal)' },
         { value: 'know_trait', label: 'Learn/Add Trait (trait_add)' },
+        { value: 'know_other_sims_trait', label: 'Learn Other Sim Traits' },
         { value: 'remove_trait', label: 'Remove Trait (trait_remove)' },
         { value: 'stat_set_max', label: 'Reset Commodity (statistic_set_max)' },
         { value: 'money', label: 'Money Reward (money_loot)' },
@@ -143,7 +144,12 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
       ]},
       { id: 'amount', label: 'Amount (Money/Stat)', type: 'integer', default: 0 },
       { id: 'buff_ref', label: 'Buff Target', type: 'reference', targetType: 'Buff' },
+      { id: 'buff_subject', label: 'Buff Subject', type: 'enum', options: [
+        { value: 'Actor', label: 'Actor (Self)' },
+        { value: 'TargetSim', label: 'Target Sim' }
+      ], default: 'Actor' },
       { id: 'trait_ref', label: 'Trait Target', type: 'reference', targetType: 'Trait' },
+      { id: 'trait_refs', label: 'Potential Traits (Multiple)', type: 'list', targetType: 'Trait' },
       { id: 'stat_ref', label: 'Statistic/Commodity Target', type: 'reference', targetType: 'Commodity' },
       { id: 'rel_bit_ref', label: 'Relationship Bit Target', type: 'reference', targetType: 'RelBit' },
       { id: 'notification_title', label: 'Notification Title', type: 'string' },
@@ -166,6 +172,15 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
         { value: 'Funny', label: 'Funny' }
       ]},
       { id: 'loot_on_completion', label: 'Outcome Loot', type: 'reference', targetType: 'LootActionSet' },
+      { id: 'category_tags', label: 'Social Categories', type: 'multiEnum', options: [
+        { value: 'Interaction_Mixer', label: 'Mixer' },
+        { value: 'Interaction_SocialMixer', label: 'Social Mixer' },
+        { value: 'Interaction_Friendly', label: 'Friendly' },
+        { value: 'Interaction_Mean', label: 'Mean' },
+        { value: 'Interaction_Flirty', label: 'Flirty' },
+        { value: 'Interaction_Funny', label: 'Funny' },
+        { value: 'Interaction_Chat', label: 'Chat' }
+      ]},
       { id: 'icon', label: 'Pie Menu Icon', type: 'resource' }
     ]
   },

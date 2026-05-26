@@ -123,8 +123,21 @@ export function importFromPackage(resources: DBPFResource[]): any {
         if (loots) {
           const buff = loots.querySelector('V[t="buff_loot_op"], V[t="buff"]');
           if (buff) {
+            const outerU = buff.querySelector('U[n="buff"]');          // outer U
+            const innerU = outerU?.querySelector('U[n="buff"]');       // inner U with buff_type
             elementData.variant = 'buff';
-            elementData.buff_ref = resolveRef(buff.querySelector('T[n="buff_type"]')?.textContent || '', 'Buff');
+            elementData.buff_ref = resolveRef(innerU?.querySelector('T[n="buff_type"]')?.textContent || '', 'Buff');
+            elementData.buff_subject = outerU?.querySelector('E[n="subject"]')?.textContent || 'Actor';
+            elementData.buff_reason_ref = innerU?.querySelector('V[n="buff_reason"] T')?.textContent;
+            // Preserve raw tests XML so it can be round-tripped
+            elementData.buff_tests_xml = outerU?.querySelector('L[n="tests"]')?.outerHTML || '';
+          }
+          const knowOtherTrait = loots.querySelector('V[t="know_other_sims_trait"]');
+          if (knowOtherTrait) {
+            elementData.variant = 'know_other_sims_trait';
+            const traits = knowOtherTrait.querySelectorAll('L[n="potential_traits"] T');
+            elementData.trait_refs = Array.from(traits).map(t => resolveRef(t.textContent || '', 'Trait'));
+            elementData.has_notification = !!knowOtherTrait.querySelector('V[n="notification"][t="enabled"]');
           }
           const buffRemoval = loots.querySelector('V[t="buff_removal"]');
           if (buffRemoval) {

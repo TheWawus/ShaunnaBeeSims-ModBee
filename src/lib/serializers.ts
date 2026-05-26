@@ -221,7 +221,32 @@ function serializeLoot(el: ModElement, strings: Record<number, string>, allEleme
       <U n="buff">
         <U n="buff">
           <T n="buff_type">${getInstanceId(data.buff_ref, allElements)}</T>
+          ${data.buff_reason_ref ? `<V n="buff_reason" t="enabled"><T n="enabled">${data.buff_reason_ref}</T></V>` : ''}
         </U>
+        <E n="subject">${data.buff_subject || 'Actor'}</E>
+        ${data.buff_tests_xml || ''}
+      </U>
+    </V>`;
+      }
+      break;
+    case 'know_other_sims_trait':
+      if (data.trait_refs && data.trait_refs.length > 0) {
+        lootActionXml = `
+    <V t="know_other_sims_trait">
+      <U n="know_other_sims_trait">
+        ${data.has_notification ? `
+        <V n="notification" t="enabled">
+          <V n="enabled" t="reference">
+            <T n="reference">12345</T> <!-- Generic notification -->
+          </V>
+        </V>` : ''}
+        <V n="traits" t="specified">
+          <U n="specified">
+            <L n="potential_traits">
+              ${data.trait_refs.map((tr: string) => `<T>${getInstanceId(tr, allElements)}</T>`).join('\n              ')}
+            </L>
+          </U>
+        </V>
       </U>
     </V>`;
       }
@@ -357,9 +382,16 @@ function serializeMixer(el: ModElement, strings: Record<number, string>, allElem
   const nameHash = fnv32(data.display_name || '');
   strings[nameHash] = data.display_name || '';
 
+  const categoryTags = data.category_tags || ['Interaction_Mixer', 'Interaction_All', 
+    'Interaction_SocialAll', 'Interaction_SocialMixer', 'Interaction_Friendly', 'Interaction_Chat'];
+  const tagXml = categoryTags.map((t: string) => `<E>${t}</E>`).join('\n    ');
+
   return `<?xml version="1.0" encoding="utf-8"?>
 <I c="SocialMixerInteraction" i="interaction" m="interactions.social.social_mixer_interaction" n="${n}" s="${instanceId}">
   <T n="display_name">${toStblRef(nameHash)}</T>
+  <L n="interaction_category_tags">
+    ${tagXml}
+  </L>
   <V n="outcome" t="single">
     <U n="single">
       <U n="outcome">
@@ -620,7 +652,7 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
       typeId = 0x7E912205; // Snippet
     } else if (el.type === 'LootActionSet') {
       xml = serializeLoot(el, strings, elements);
-      typeId = 0x6017E896;
+      typeId = 0x0C772E27; // LootActions
     }
 
     if (xml) {
@@ -634,7 +666,7 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
       if (simDataBytes) {
         resources.push({
           typeId: 0x545AC67A, // SimData
-          groupId: 0x006456D7, // SimData Group (TS4 standard)
+          groupId: 0x00B2D882, // Standard SimData Group for Tuning
           instanceId: getInstanceId(el, elements),
           data: simDataBytes
         });
@@ -648,8 +680,8 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
     // 1. Create an AffordanceList snippet containing all mixers
     const listInstanceId = fnv64('ModBee:MixerList');
     const listXml = `<?xml version="1.0" encoding="utf-8"?>
-<I c="Snippet" i="snippet" m="snippets" n="ModBee:AffordanceList" s="${listInstanceId}">
-  <L n="value">
+<I c="Snippet" i="snippet" m="snippets.affordance_list" n="ModBee:AffordanceList" s="${listInstanceId}">
+  <L n="affordances">
     ${mixers.map(m => `<T>${getInstanceId(m, elements)}</T>`).join('\n    ')}
   </L>
 </I>`;
@@ -661,16 +693,24 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
     });
 
     // 2. Create XML Injector snippets to wire this list into EA's social mixers
-    // IDs 163706 and 163702 are the standard social mixer tuning snippets
-    [163706n, 163702n].forEach((targetId, idx) => {
+    // Real social mixer target snippets (Friendly, Funny, Flirty, Mean)
+    const socialSnippetTargets = [
+      0x00000000D8A5A66Cn, // social_Mixers_Friendly_NonTouching
+      0x000000005C72E9D0n, // social_Mixers_Funny
+      0x000000005F99B7A6n, // social_Mixers_Flirty
+      0x00000000D94A6E78n  // social_Mixers_Mean
+    ];
+
+    socialSnippetTargets.forEach((targetId, idx) => {
       const injectId = fnv64(`ModBee:MixerInject_${idx}`);
       const injectXml = `<?xml version="1.0" encoding="utf-8"?>
 <I c="XmlInjector" i="snippet" m="xml_injector.injector" n="ModBee:MixerInject_${idx}" s="${injectId}">
-  <L n="snippet_injections">
+  <L n="add_to_affordance_list">
     <U>
-      <T n="target_snippet">${targetId}</T>
-      <T n="list_to_add">${listInstanceId}</T>
-      <E n="operation">ADD_TO_SNIPPET_LIST</E>
+      <T n="affordance_list">${targetId.toString()}</T>
+      <L n="affordances">
+        ${mixers.map(m => `<T>${getInstanceId(m, elements)}</T>`).join('\n        ')}
+      </L>
     </U>
   </L>
 </I>`;

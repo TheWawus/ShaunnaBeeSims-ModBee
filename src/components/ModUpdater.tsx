@@ -21,6 +21,7 @@ const TUNING_TYPE_IDS = new Set([
   0xE882D22F, // Social interaction
   0x7E912205, // Snippet (XML Injector)
   0x339BC5BD, // Statistic / Commodity
+  0x0C772E27, // LootActions
 ]);
 
 /** Map from (c= attribute) → tdesc URL segments. */
@@ -106,80 +107,61 @@ type StepKind = 'drop' | 'scanning' | 'review' | 'exporting' | 'done' | 'error';
 
 const tdescCache = new Map<string, TdescSchema | null>();
 
-async function fetchTdesc(className: string): Promise<TdescSchema | null> {
-  if (tdescCache.has(className)) return tdescCache.get(className)!;
+/**
+ * Derive TDESC filename from the tuning's m= attribute.
+ */
+function getTdescUrl(modulePath: string): string {
+  // m="interactions.social.social_mixer_interaction"
+  // → "interactions-social-social_mixer_interaction.tdesc"
+  const segment = modulePath.replace(/\./g, '-');
+  return `${TDESC_BASE}/Tuning/${segment}.tdesc`;
+}
 
-  const candidates = CLASS_TO_TDESC[className];
-  
+async function fetchTdesc(modulePath: string, className: string): Promise<TdescSchema | null> {
+  if (tdescCache.has(modulePath)) return tdescCache.get(modulePath)!;
+
   const tryUrl = async (url: string) => {
     try {
       const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
       const res = await fetch(proxiedUrl);
       if (!res.ok) return null;
       const text = await res.text();
-      if (!text.includes('<I')) return null; // Simple check if it's XML
+      // Basic check: TDESC files should contain some field definitions or I root
+      if (!text.includes('<I')) return null; 
       return parseTdesc(className, text);
     } catch {
       return null;
     }
   };
 
-  if (candidates) {
-    for (const { dir, file } of candidates) {
-      const url = `${TDESC_BASE}/${dir}/Descriptions/${file}.tdesc`;
-      const schema = await tryUrl(url);
-      if (schema) {
-        tdescCache.set(className, schema);
-        return schema;
+  // Primary: path-based TDESC
+  const url = getTdescUrl(modulePath);
+  let schema = await tryUrl(url);
+
+  // Fallback: search-based via CLASS_TO_TDESC if path fails
+  if (!schema) {
+    const candidates = CLASS_TO_TDESC[className];
+    if (candidates) {
+      for (const { dir, file } of candidates) {
+        const urlCandidate = `${TDESC_BASE}/${dir}/Descriptions/${file}.tdesc`;
+        schema = await tryUrl(urlCandidate);
+        if (schema) break;
       }
     }
   }
 
-  // Fallback: try the /Tuning/ path pattern with lowercase class
-  const fallbackUrl = `${TDESC_BASE}/Tuning/${className.toLowerCase()}.tdesc`;
-  const fallbackSchema = await tryUrl(fallbackUrl);
-  if (fallbackSchema) {
-    tdescCache.set(className, fallbackSchema);
-    return fallbackSchema;
-  }
-
-  // Try just /Tuning/Class.tdesc
-  const fallbackUrl2 = `${TDESC_BASE}/Tuning/${className}.tdesc`;
-  const fallbackSchema2 = await tryUrl(fallbackUrl2);
-  if (fallbackSchema2) {
-    tdescCache.set(className, fallbackSchema2);
-    return fallbackSchema2;
-  }
-
-  tdescCache.set(className, null);
-  return null;
+  tdescCache.set(modulePath, schema);
+  return schema;
 }
 
 /**
- * Checks a resource against its TDESC schema using the pack flag (pf) versioning.
+ * Checks a resource against its TDESC schema by looking for deprecated/missing fields.
  */
 async function checkResourceAgainstTdesc(tuned: TunedResource): Promise<{ upToDate: boolean; message?: string }> {
-  // The mod's XML has: <I c="Trait" m="..." n="..." s="<instanceId>" pf="<packFlag>">
-  const modPf = tuned.dom.querySelector('I')?.getAttribute('pf');
-  
-  const schema = await fetchTdesc(tuned.className);
+  const schema = await fetchTdesc(tuned.modulePath, tuned.className);
   if (!schema) return { upToDate: true };
 
-  // Parse the pf from the fetched TDESC root element
-  const tdescParser = new DOMParser();
-  const tdescDoc = tdescParser.parseFromString(schema.rawTdesc, 'text/xml');
-  const troot = tdescDoc.querySelector('I');
-  const tdescPf = troot?.getAttribute('pf');
-  
-  // If we have a TDESC pf and it differs from mod (or mod is missing pf), it's potentially outdated
-  if (tdescPf && modPf !== tdescPf) {
-    return { 
-      upToDate: false, 
-      message: `Tuning version mismatch. Game: ${tdescPf}, Mod: ${modPf || '0'}. Tuning logic may have changed.` 
-    };
-  }
-
-  // Structural Diff: Check if fields used in the mod still exist in the TDESC
+  // 1. Structural Diff: Check if fields used in the mod still exist in the TDESC
   const modUsedFields = new Set<string>();
   const collectUsed = (el: Element) => {
     const n = el.getAttribute('n');
@@ -194,11 +176,11 @@ async function checkResourceAgainstTdesc(tuned: TunedResource): Promise<{ upToDa
   if (missingFields.length > 0) {
     return {
       upToDate: false,
-      message: `Tuning contains ${missingFields.length} fields that no longer exist in the game schema (e.g., "${missingFields[0]}").`
+      message: `Deprecated Fields Found: ${missingFields.length} parameters (e.g., "${missingFields[0]}") no longer exist in the latest game schema.`
     };
   }
 
-  // Check if any REQUIRED fields in the TDESC are missing in the mod (only for EA overrides)
+  // 2. Required Fields Check
   const isEAResource = BigInt(tuned.instanceId) < 0x0100000000000000n;
   if (isEAResource && modRoot) {
     const modTopLevelFields = new Set(Array.from(modRoot.children).map(c => c.getAttribute('n')).filter(Boolean) as string[]);
@@ -207,7 +189,7 @@ async function checkResourceAgainstTdesc(tuned: TunedResource): Promise<{ upToDa
     if (missingRequired.length > 0) {
       return {
         upToDate: false,
-        message: `Missing ${missingRequired.length} required fields from the latest game schema (e.g., "${missingRequired[0].name}").`
+        message: `Missing Required Fields: ${missingRequired.length} fields (e.g., "${missingRequired[0].name}") are now required by the game.`
       };
     }
   }
@@ -477,7 +459,7 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
 
           let schema: TdescSchema | null = null;
           try {
-            schema = await fetchTdesc(t.className);
+            schema = await fetchTdesc(t.modulePath, t.className);
           } catch { /* schema stays null */ }
 
           const issues = schema ? diffTuning(t, schema) : [];
