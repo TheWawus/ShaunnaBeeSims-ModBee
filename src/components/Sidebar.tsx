@@ -57,13 +57,13 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
     <>
       <aside className="w-80 h-screen bg-white border-r-4 border-[var(--color-border-light)] flex flex-col fixed left-0 top-0 z-50">
         {/* Header */}
-        <div className="p-8 border-b-4 border-[var(--color-border-light)] bg-[var(--color-bg-primary)]/30">
-          <div className="flex items-center gap-3 mb-2">
-            <img src="/bee.png" className="w-10 h-10 object-contain" alt="" />
-            <h1 className="text-3xl font-black text-[var(--color-tertiary)] uppercase tracking-tighter shrink-0">ModBee</h1>
+        <div className="p-6 border-b-4 border-[var(--color-border-light)] bg-[var(--color-bg-primary)]/30">
+          <div className="flex items-center gap-3 mb-1">
+            <img src="/bee.png" className="w-8 h-8 object-contain" alt="" />
+            <h1 className="text-2xl font-black text-[var(--color-tertiary)] uppercase tracking-tighter shrink-0">ModBee</h1>
           </div>
-          <div className="min-h-[1.5rem]">
-            <p className="text-xs font-black opacity-40 uppercase tracking-[0.15em] break-words leading-relaxed">{state.modInfo.displayName || 'Untitled Mod'}</p>
+          <div className="h-8 flex items-start">
+            <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.15em] break-words leading-tight line-clamp-2 w-full">{state.modInfo.displayName || 'Untitled Mod'}</p>
           </div>
         </div>
 

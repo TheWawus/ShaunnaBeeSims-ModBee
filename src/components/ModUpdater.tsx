@@ -10,9 +10,7 @@ import type { DBPFResource } from '../types';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/** Proxy URL. Using a public CORS proxy to avoid browser-side blocking. */
-const CORS_PROXY = 'https://corsproxy.io/?url=';
-const TDESC_BASE = 'https://tdesc.lot51.cc'; 
+const TDESC_BASE = 'https://tdesc.lot51.cc';
 
 /** Resource type IDs that contain tuning XML */
 const TUNING_TYPE_IDS = new Set([
@@ -95,6 +93,7 @@ export interface TuningIssue {
 interface ResourceReport {
   resource: TunedResource;
   schema: TdescSchema | null;
+  schemaFetchFailed: boolean;
   issues: TuningIssue[];
   patchedXml: string;
   approved: Set<number>;     
@@ -121,17 +120,12 @@ async function fetchTdesc(modulePath: string, className: string): Promise<TdescS
   if (tdescCache.has(modulePath)) return tdescCache.get(modulePath)!;
 
   const tryUrl = async (url: string) => {
-    try {
-      const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
-      const res = await fetch(proxiedUrl);
-      if (!res.ok) return null;
-      const text = await res.text();
-      // Basic check: TDESC files should contain some field definitions or I root
-      if (!text.includes('<I')) return null; 
-      return parseTdesc(className, text);
-    } catch {
-      return null;
-    }
+    // Fetch directly — tdesc.lot51.cc supports CORS, no proxy needed
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text.includes('<I')) return null;
+    return parseTdesc(className, text);
   };
 
   // Primary: path-based TDESC
@@ -458,27 +452,35 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
           });
 
           let schema: TdescSchema | null = null;
+          let schemaFetchFailed = false;
           try {
             schema = await fetchTdesc(t.modulePath, t.className);
-          } catch { /* schema stays null */ }
+            // schema===null here means the TDESC genuinely doesn't exist for this class,
+            // not a network failure (fetchTdesc throws on network errors now)
+          } catch {
+            schemaFetchFailed = true;
+          }
 
           const issues = schema ? diffTuning(t, schema) : [];
 
-          // Issue 2 Fix: Check if this resource is outdated using pack versions (pf)
-          const checkResult = await checkResourceAgainstTdesc(t);
-          if (!checkResult.upToDate) {
-            issues.push({
-              kind: 'deprecated_field',
-              fieldName: 'Tuning Version',
-              message: checkResult.message || `This resource may be outdated.`,
-              autoFixable: false,
-              isHashMismatch: true
-            });
+          // Only run the secondary check when we actually have a schema
+          if (schema) {
+            const checkResult = await checkResourceAgainstTdesc(t);
+            if (!checkResult.upToDate) {
+              issues.push({
+                kind: 'deprecated_field',
+                fieldName: 'Tuning Version',
+                message: checkResult.message || `This resource may be outdated.`,
+                autoFixable: false,
+                isHashMismatch: true
+              });
+            }
           }
 
           const report: ResourceReport = {
             resource: t,
             schema,
+            schemaFetchFailed,
             issues,
             patchedXml: issues.length
               ? buildPatchedXml(t, issues, new Set<number>(
@@ -599,6 +601,7 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
   const totalFixed    = reports.reduce((n, r) => n + r.approved.size, 0);
   const cleanReports  = reports.filter(r => r.issues.length === 0);
   const issuedReports = reports.filter(r => r.issues.length > 0);
+  const schemasFailed = reports.filter(r => r.schemaFetchFailed).length;
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md">
@@ -680,11 +683,21 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
                  ))}
               </div>
 
-              {totalIssues === 0 ? (
+              {totalIssues === 0 && schemasFailed === 0 ? (
                 <div className="p-12 bg-green-50 border-4 border-green-200 rounded-[3rem] text-center">
                   <div className="text-5xl mb-4">🏆</div>
                   <h3 className="text-2xl font-black text-green-800 uppercase tracking-tight">Your mods are up to date!</h3>
                   <p className="text-green-600 font-bold mt-2">Every resource passed schema validation.</p>
+                </div>
+              ) : totalIssues === 0 && schemasFailed > 0 ? (
+                <div className="p-12 bg-amber-50 border-4 border-amber-300 rounded-[3rem] text-center">
+                  <div className="text-5xl mb-4">⚠️</div>
+                  <h3 className="text-2xl font-black text-amber-800 uppercase tracking-tight">Could Not Verify {schemasFailed} Resource{schemasFailed > 1 ? 's' : ''}</h3>
+                  <p className="text-amber-700 font-bold mt-2">
+                    The game schema server (tdesc.lot51.cc) could not be reached for {schemasFailed} resource{schemasFailed > 1 ? 's' : ''}.
+                    These mods were <span className="underline">not checked</span> — they may still be outdated.
+                  </p>
+                  <p className="text-amber-600 text-sm mt-3 font-semibold">Check your internet connection and try again.</p>
                 </div>
               ) : (
                 <div className="flex gap-8">
@@ -716,9 +729,14 @@ export function ModUpdater({ onClose }: { onClose: () => void }) {
                           <div>
                              <div className="flex items-center gap-3">
                                <h4 className="font-black uppercase tracking-tight text-xl">{reports[activeReport].resource.tuningName}</h4>
-                               {!reports[activeReport].schema && (
+                               {!reports[activeReport].schema && !reports[activeReport].schemaFetchFailed && (
                                  <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-full tracking-widest border border-amber-200">
                                    Schema Missing
+                                 </span>
+                               )}
+                               {reports[activeReport].schemaFetchFailed && (
+                                 <span className="px-3 py-1 bg-red-100 text-red-700 text-[9px] font-black uppercase rounded-full tracking-widest border border-red-200">
+                                   ⚠ Schema Fetch Failed
                                  </span>
                                )}
                              </div>
