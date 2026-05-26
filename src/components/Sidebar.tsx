@@ -60,9 +60,11 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
         <div className="p-8 border-b-4 border-[var(--color-border-light)] bg-[var(--color-bg-primary)]/30">
           <div className="flex items-center gap-3 mb-2">
             <img src="/bee.png" className="w-10 h-10 object-contain" alt="" />
-            <h1 className="text-3xl font-black text-[var(--color-tertiary)] uppercase tracking-tighter">ModBee</h1>
+            <h1 className="text-3xl font-black text-[var(--color-tertiary)] uppercase tracking-tighter shrink-0">ModBee</h1>
           </div>
-          <p className="text-sm font-black opacity-30 uppercase tracking-[0.2em]">{state.modInfo.displayName || 'Untitled Mod'}</p>
+          <div className="min-h-[1.5rem]">
+            <p className="text-xs font-black opacity-40 uppercase tracking-[0.15em] break-words leading-relaxed">{state.modInfo.displayName || 'Untitled Mod'}</p>
+          </div>
         </div>
 
         {/* Global Steps */}
@@ -97,6 +99,19 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
             <img src="/gears.png" className="w-6 h-6 object-contain" alt="" />
             Mod Organiser
           </button>
+
+          <div className="pt-4 border-t-2 border-dashed border-gray-100 mt-4">
+            <button 
+              id="tutorial-add-element-btn"
+              onClick={() => setIsAdding(true)}
+              className="w-full p-4 rounded-2xl border-4 border-dashed border-[var(--color-border)] flex items-center gap-4 hover:border-[var(--color-tertiary)] hover:bg-white transition-all group"
+            >
+              <div className="w-8 h-8 rounded-full bg-[var(--color-bg-primary)] group-hover:bg-[var(--color-tertiary)] flex items-center justify-center text-lg group-hover:text-white transition-all">
+                +
+              </div>
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] opacity-50 group-hover:opacity-100">Add Element</span>
+            </button>
+          </div>
         </nav>
 
         {/* Elements List */}
@@ -211,17 +226,6 @@ export function Sidebar({ currentStep, setStep, onExit, view, onViewChange, onSh
                 {state.elements.length === 0 ? 'No elements yet' : 'No matches found'}
               </div>
             )}
-
-            <button 
-              id="tutorial-add-element-btn"
-              onClick={() => setIsAdding(true)}
-              className="w-full p-8 rounded-3xl border-4 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center gap-3 hover:border-[var(--color-tertiary)] hover:bg-white transition-all group mt-4"
-            >
-              <div className="w-12 h-12 rounded-full bg-[var(--color-bg-primary)] group-hover:bg-[var(--color-tertiary)] flex items-center justify-center text-2xl group-hover:text-white transition-all">
-                +
-              </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em] opacity-40 group-hover:opacity-100">Add Element</span>
-            </button>
           </div>
         </div>
 
