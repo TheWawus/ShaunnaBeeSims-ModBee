@@ -141,7 +141,7 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-12 animate-in fade-in zoom-in-95 duration-700 relative">
+    <div className="flex flex-col items-center animate-in fade-in zoom-in-95 duration-700 relative w-full pt-[15px]">
       {/* BIIIIIIIG Background Bee */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
         <img 
@@ -151,97 +151,104 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
         />
       </div>
 
-      <header className={`relative z-10 ${isLoading ? 'opacity-50 blur-sm pointer-events-none transition-all' : 'transition-all'}`}>
-        <h1 className="text-7xl font-black text-[var(--color-tertiary)] mb-4 tracking-tighter uppercase">
-          ModBee <span className="text-[var(--color-accent)]">Mod Builder</span>
-        </h1>
-        <p className="text-2xl font-medium opacity-60 max-w-2xl mx-auto">
-          Professional Sims 4 modding tools designed for creators. 
-          Powerful features, clean workflow, neurodivergent-friendly.
-        </p>
-      </header>
-
-      {error && (
-        <div className="w-full max-w-4xl px-4 animate-in slide-in-from-top-4 duration-300">
-          <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-3xl flex items-center gap-4 shadow-sm">
-            <span className="text-2xl">⚠️</span>
-            <div className="text-left">
-              <div className="font-bold uppercase text-xs tracking-wider opacity-60">Import Error</div>
-              <div className="font-medium">{error}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex flex-col items-center gap-6 animate-pulse">
-          <div className="w-32 h-32 bg-[var(--color-tertiary)] rounded-full flex items-center justify-center animate-bounce overflow-hidden">
-            <img src="/bee.png" className="w-24 h-24 object-contain" alt="Processing" />
-          </div>
-          <div className="text-3xl font-black text-[var(--color-tertiary)] uppercase tracking-widest">
-            Processing Mod...
-          </div>
-          <p className="opacity-40 font-bold">Unpacking DBPF resources and parsing tuning XMLs</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4 relative z-10">
-          {/* Create New Mod */}
-          <button
-            onClick={handleCreateNewClick}
-            className="group relative flex flex-col items-center p-12 bg-white border-4 border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl hover:border-[var(--color-tertiary)] hover:-translate-y-2 transition-all cursor-pointer"
-          >
-            <div className="w-24 h-24 bg-[var(--color-bg-primary)] rounded-full flex items-center justify-center mb-6 shadow-inner group-hover:bg-[var(--color-surface-light)] transition-colors overflow-hidden">
-              <img src="/CreateNew.png" className="w-16 h-16 object-contain" alt="New" />
-            </div>
-            <div className="text-3xl font-black mb-3">Create New</div>
-            <p className="opacity-60 text-lg leading-relaxed">Start a fresh project from scratch with our wizard.</p>
-          </button>
-
-          {/* Import Mod */}
-          <div className="relative group">
-            <input
-              type="file"
-              multiple
-              accept=".package,.ts4script"
-              onChange={handleImport}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      <div className="flex flex-col items-center justify-start space-y-12 w-full relative z-10 pb-12">
+        <header className={`transition-all ${isLoading ? 'opacity-50 blur-sm pointer-events-none' : ''}`}>
+          <div className="mb-8">
+            <video 
+              src="/spingif2.webm" 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-40 h-40 object-contain mx-auto"
             />
-            <div className="flex flex-col items-center p-12 bg-white border-[4px] border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl group-hover:border-[var(--color-accent)] group-hover:-translate-y-2 transition-all">
-              <div className="w-24 h-24 bg-[var(--color-surface-light)] rounded-full flex items-center justify-center mb-6 shadow-inner overflow-hidden">
-                <img src="/import.png" className="w-16 h-16 object-contain" alt="Import" />
+          </div>
+          <h1 className="text-7xl font-black text-[var(--color-tertiary)] mb-4 tracking-tighter uppercase">
+            ModBee <span className="text-[var(--color-accent)]">Mod Builder</span>
+          </h1>
+          <p className="text-2xl font-medium opacity-60 max-w-2xl mx-auto">
+            Professional Sims 4 modding tools designed for creators. 
+            Powerful features, clean workflow, neurodivergent-friendly.
+          </p>
+        </header>
+
+        {error && (
+          <div className="w-full max-w-4xl px-4 animate-in slide-in-from-top-4 duration-300">
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-3xl flex items-center gap-4 shadow-sm">
+              <span className="text-2xl">⚠️</span>
+              <div className="text-left">
+                <div className="font-bold uppercase text-xs tracking-wider opacity-60">Import Error</div>
+                <div className="font-medium">{error}</div>
               </div>
-              <div className="text-3xl font-black mb-3">Import Mod</div>
-              <p className="opacity-60 text-lg leading-relaxed">Load direct .package and .ts4script files to edit.</p>
             </div>
           </div>
+        )}
 
-          {/* Update Your Mods - New Feature */}
-          <button
-            onClick={() => setShowUpdater(true)}
-            className="md:col-span-2 group relative flex items-center gap-10 p-8 bg-white border-4 border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl hover:border-indigo-400 hover:-translate-y-1 transition-all cursor-pointer"
-          >
-            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center shadow-inner group-hover:bg-indigo-100 transition-colors overflow-hidden shrink-0">
-               <img src="/gears.png" className="w-12 h-12 object-contain" alt="Update" />
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-6 animate-pulse">
+            <div className="w-32 h-32 bg-[var(--color-tertiary)] rounded-full flex items-center justify-center animate-bounce overflow-hidden">
+              <img src="/bee.png" className="w-24 h-24 object-contain" alt="Processing" />
             </div>
-            <div className="text-left">
-              <div className="text-2xl font-black mb-1">Update Your Mods</div>
-              <p className="opacity-60 text-base leading-relaxed">Batch verify and patch mods for the latest game version.</p>
+            <div className="text-3xl font-black text-[var(--color-tertiary)] uppercase tracking-widest">
+              Processing Mod...
             </div>
-            <div className="ml-auto px-6 py-3 bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg group-hover:scale-105 transition-transform">
-               Beta
+            <p className="opacity-40 font-bold">Unpacking DBPF resources and parsing tuning XMLs</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4">
+            {/* Create New Mod */}
+            <button
+              onClick={handleCreateNewClick}
+              className="group relative flex flex-col items-center p-12 bg-white border-4 border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl hover:border-[var(--color-tertiary)] hover:-translate-y-2 transition-all cursor-pointer"
+            >
+              <div className="w-24 h-24 bg-[var(--color-bg-primary)] rounded-full flex items-center justify-center mb-6 shadow-inner group-hover:bg-[var(--color-surface-light)] transition-colors overflow-hidden">
+                <img src="/CreateNew.png" className="w-16 h-16 object-contain" alt="New" />
+              </div>
+              <div className="text-3xl font-black mb-3">Create New</div>
+              <p className="opacity-60 text-lg leading-relaxed">Start a fresh project from scratch with our wizard.</p>
+            </button>
+
+            {/* Import Mod */}
+            <div className="relative group">
+              <input
+                type="file"
+                multiple
+                accept=".package,.ts4script"
+                onChange={handleImport}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex flex-col items-center p-12 bg-white border-[4px] border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl group-hover:border-[var(--color-accent)] group-hover:-translate-y-2 transition-all">
+                <div className="w-24 h-24 bg-[var(--color-surface-light)] rounded-full flex items-center justify-center mb-6 shadow-inner overflow-hidden">
+                  <img src="/import.png" className="w-16 h-16 object-contain" alt="Import" />
+                </div>
+                <div className="text-3xl font-black mb-3">Import Mod</div>
+                <p className="opacity-60 text-lg leading-relaxed">Load direct .package and .ts4script files to edit.</p>
+              </div>
             </div>
-          </button>
-        </div>
-      )}
+
+            {/* Update Your Mods - New Feature */}
+            <button
+              onClick={() => setShowUpdater(true)}
+              className="md:col-span-2 group relative flex items-center gap-10 p-8 bg-white border-4 border-[var(--color-border)] text-[var(--color-text)] rounded-[3rem] shadow-xl hover:border-indigo-400 hover:-translate-y-1 transition-all cursor-pointer"
+            >
+              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center shadow-inner group-hover:bg-indigo-100 transition-colors overflow-hidden shrink-0">
+                 <img src="/gears.png" className="w-12 h-12 object-contain" alt="Update" />
+              </div>
+              <div className="text-left">
+                <div className="text-2xl font-black mb-1">Update Your Mods</div>
+                <p className="opacity-60 text-base leading-relaxed">Batch verify and patch mods for the latest game version.</p>
+              </div>
+              <div className="ml-auto px-6 py-3 bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg group-hover:scale-105 transition-transform">
+                 Beta
+              </div>
+            </button>
+          </div>
+        )}
+      </div>
 
       {showUpdater && (
         <ModUpdater onClose={() => setShowUpdater(false)} />
       )}
-
-
-      <div className="pt-12 text-sm font-bold opacity-30 tracking-widest uppercase relative z-10">
-        Neurodivergent-friendly architecture • FNV-Hash automation • DBPF 2.1 Compliant
-      </div>
 
       {showTutorialPrompt && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 text-left">
@@ -299,6 +306,10 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
           </div>
         </div>
       )}
+
+      <footer className="py-12 text-sm font-bold opacity-30 tracking-widest uppercase relative z-10 w-full text-center">
+        Neurodivergent-friendly architecture • FNV-Hash automation • DBPF 2.1 Compliant
+      </footer>
     </div>
   );
 }
@@ -309,41 +320,62 @@ export function LandingScreen({ onStart, onStartTutorial }: LandingScreenProps) 
 function extractInjectionsFromPython(python: string): { source: string; target: string; type: string }[] {
   const links: { source: string; target: string; type: string }[] = [];
 
-  // MC5 pattern: <Prefix>_<numericKey>_SnippetId = <snippetDecimalId>
-  //              <Prefix>_<numericKey>_MixerId = (<mixerId1>,<mixerId2>,)
-  const snippetMatches = [...python.matchAll(/\w+?_(\d+)_SnippetId\s*=\s*(\d+)/g)];
-  const mixerMatches   = [...python.matchAll(/\w+?_(\d+)_MixerId\s*=\s*\(([^)]+)\)/g)];
+  // MC5 pattern: ..._<snippetId>_SnippetId = <snippetId>
+  //              ..._<snippetId>_MixerId = (<id1>,<id2>,)
+  // Example: ShaunnaBeeSims_SpiritualAFmEA_163706_SnippetId = 163706
+  const snippetMatches = [...python.matchAll(/([A-Za-z0-9_]+)_SnippetId\s*=\s*(\d+)/g)];
+  const mixerMatches   = [...python.matchAll(/([A-Za-z0-9_]+)_MixerId\s*=\s*\(([^)]+)\)/g)];
 
-  // Index snippet declarations by their numeric key
-  const snippetMap = new Map<string, string>(); // key -> snippetDecimalId
-  for (const m of snippetMatches) {
-    snippetMap.set(m[1], m[2]); // e.g. "163706" -> "163706"
+  // Also match INJECTION_MAP = { snippetId: (ids) }
+  const injectionMapMatch = python.match(/INJECTION_MAP\s*=\s*\{([\s\S]+?)\}/);
+  if (injectionMapMatch) {
+    const entries = injectionMapMatch[1].split('\n');
+    entries.forEach(line => {
+      const entryMatch = line.match(/\s*(\d+)\s*:\s*\(([^)]+)\)/);
+      if (entryMatch) {
+        const snippetId = entryMatch[1];
+        const mixerIds = entryMatch[2].split(',').map(s => s.trim()).filter(Boolean);
+        mixerIds.forEach(mid => {
+           links.push({
+             source: `MixerInteraction_${mid.replace(/L$/, '').toLowerCase()}`,
+             target: `XmlInjectorSnippet_${snippetId.toLowerCase()}`,
+             type: 'injection'
+           });
+        });
+      }
+    });
   }
 
-  for (const m of mixerMatches) {
-    const key = m[1];
-    const snippetId = snippetMap.get(key);
-    if (!snippetId) continue;
+  const prefixMap = new Map<string, string>(); // prefix -> snippetId
+  snippetMatches.forEach(m => {
+    const prefix = m[1];
+    const snippetId = m[2];
+    prefixMap.set(prefix, snippetId);
+  });
+
+  mixerMatches.forEach(m => {
+    const prefix = m[1];
+    const snippetId = prefixMap.get(prefix);
+    if (!snippetId) return;
 
     const mixerIds = m[2].split(',').map(s => s.trim()).filter(Boolean);
-    for (const mixerId of mixerIds) {
-      // Convert IDs to hex for consistency with project state
-      const normalizeId = (id: string) => {
-        try {
-          if (id.startsWith('0x')) return id.substring(2).toLowerCase();
-          return BigInt(id.replace(/L$/, '')).toString(16).toLowerCase();
-        } catch {
-          return id.toLowerCase();
-        }
-      };
+    const normalizeId = (id: string) => {
+      try {
+        if (id.startsWith('0x')) return id.substring(2).toLowerCase();
+        return BigInt(id.replace(/L$/, '')).toString(16).toLowerCase();
+      } catch {
+        return id.toLowerCase();
+      }
+    };
 
+    mixerIds.forEach(mid => {
       links.push({
-        source: `MixerInteraction_${normalizeId(mixerId)}`,
-        target: `Snippet_${normalizeId(snippetId)}`,
+        source: `MixerInteraction_${normalizeId(mid)}`,
+        target: `XmlInjectorSnippet_${normalizeId(snippetId)}`, // Corrected type
         type: 'injection'
       });
-    }
-  }
+    });
+  });
 
   return links;
 }

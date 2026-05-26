@@ -309,14 +309,32 @@ function serializeLoot(el: ModElement, strings: Record<number, string>, allEleme
       }
       break;
     case 'relationship_bit':
-      if (data.trait_ref) { // Reusing trait_ref for rel bit target if needed or special logic
+      if (data.rel_bit_ref) { 
         lootActionXml = `
     <V t="relationship_bit_add">
       <U n="relationship_bit_add">
-        <T n="bit_target">${getInstanceId(data.trait_ref, allElements)}</T>
+        <T n="bit_target">${getInstanceId(data.rel_bit_ref, allElements)}</T>
       </U>
     </V>`;
       }
+      break;
+    case 'notification':
+      const titleHash = fnv32(data.notification_title || '');
+      const textHash = fnv32(data.notification_text || '');
+      if (data.notification_title) strings[titleHash] = data.notification_title;
+      if (data.notification_text) strings[textHash] = data.notification_text;
+      
+      lootActionXml = `
+    <V t="notification_and_dialog">
+      <U n="notification_and_dialog">
+        <V n="dialog" t="notification">
+          <U n="notification">
+            ${data.notification_title ? `<V n="text" t="single"><T n="single">${toStblRef(textHash)}</T></V>` : ''}
+            ${data.notification_title ? `<V n="title" t="enabled"><T n="enabled">${toStblRef(titleHash)}</T></V>` : ''}
+          </U>
+        </V>
+      </U>
+    </V>`;
       break;
   }
 
@@ -558,6 +576,7 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
   const encoder = new TextEncoder();
   const instanceMap: Record<string, string> = {}; // instanceId -> internal_name
 
+  // Process elements
   elements.forEach(el => {
     let xml = '';
     let simDataBytes: Uint8Array | undefined;
@@ -622,6 +641,47 @@ export function runExportPipeline(elements: ModElement[]): DBPFResource[] {
       }
     }
   });
+
+  // AUTO-INJECTION logic for MixerInteractions
+  const mixers = elements.filter(el => el.type === 'MixerInteraction');
+  if (mixers.length > 0) {
+    // 1. Create an AffordanceList snippet containing all mixers
+    const listInstanceId = fnv64('ModBee:MixerList');
+    const listXml = `<?xml version="1.0" encoding="utf-8"?>
+<I c="Snippet" i="snippet" m="snippets" n="ModBee:AffordanceList" s="${listInstanceId}">
+  <L n="value">
+    ${mixers.map(m => `<T>${getInstanceId(m, elements)}</T>`).join('\n    ')}
+  </L>
+</I>`;
+    resources.push({
+      typeId: 0x7E912205,
+      groupId: 0,
+      instanceId: listInstanceId,
+      data: encoder.encode(listXml)
+    });
+
+    // 2. Create XML Injector snippets to wire this list into EA's social mixers
+    // IDs 163706 and 163702 are the standard social mixer tuning snippets
+    [163706n, 163702n].forEach((targetId, idx) => {
+      const injectId = fnv64(`ModBee:MixerInject_${idx}`);
+      const injectXml = `<?xml version="1.0" encoding="utf-8"?>
+<I c="XmlInjector" i="snippet" m="xml_injector.injector" n="ModBee:MixerInject_${idx}" s="${injectId}">
+  <L n="snippet_injections">
+    <U>
+      <T n="target_snippet">${targetId}</T>
+      <T n="list_to_add">${listInstanceId}</T>
+      <E n="operation">ADD_TO_SNIPPET_LIST</E>
+    </U>
+  </L>
+</I>`;
+      resources.push({
+        typeId: 0x7E912205,
+        groupId: 0,
+        instanceId: injectId,
+        data: encoder.encode(injectXml)
+      });
+    });
+  }
 
   // Add STBL
   const stblData = createStbl(strings);

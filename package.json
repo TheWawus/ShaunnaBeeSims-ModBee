@@ -11,10 +11,13 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@s4tk/hashing": "^0.2.1",
+    "@s4tk/models": "^0.6.14",
     "@tailwindcss/vite": "^4.1.14",
     "@types/d3": "^7.4.3",
     "@types/jsdom": "^28.0.3",
     "@vitejs/plugin-react": "^5.0.4",
+    "buffer": "^6.0.3",
     "d3": "^7.9.0",
     "jsdom": "^29.1.1",
     "jszip": "^3.10.1",
@@ -23,7 +26,8 @@
     "pako": "^2.1.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vite-plugin-node-polyfills": "^0.28.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -12,10 +12,37 @@ export function AutoEditor({ type, data, onChange }: any) {
   const [showPreview, setShowPreview] = useState(false);
   
   const schema = ELEMENT_SCHEMAS[type];
-
   if (!schema) return <div className="p-12 text-center opacity-30 uppercase font-black tracking-widest">No Schema for {type}</div>;
 
-  const visibleFields = schema.fields.filter(f => !f.advanced || showAdvanced);
+  let visibleFields = schema.fields.filter(f => !f.advanced || showAdvanced);
+
+  // Context-aware field filtering for LootActionSet
+  if (type === 'LootActionSet') {
+    const variant = data.variant;
+    visibleFields = visibleFields.filter(f => {
+      if (f.id === 'internal_name' || f.id === 'variant') return true;
+      if (variant === 'buff' || variant === 'buff_removal') {
+        return f.id === 'buff_ref';
+      }
+      if (variant === 'know_trait' || variant === 'remove_trait') {
+        return f.id === 'trait_ref';
+      }
+      if (variant === 'stat_set_max' || variant === 'statistic_change' || variant === 'skill_level_change') {
+        return f.id === 'stat_ref' || (f.id === 'amount' && variant !== 'stat_set_max');
+      }
+      if (variant === 'money') {
+        return f.id === 'amount';
+      }
+      if (variant === 'relationship_bit') {
+        return f.id === 'rel_bit_ref';
+      }
+      if (variant === 'notification') {
+        return f.id === 'notification_title' || f.id === 'notification_text';
+      }
+      return false;
+    });
+  }
+
   const hasAdvancedFields = schema.fields.some(f => f.advanced);
 
   // Helper to find connected elements (for AI context)

@@ -170,7 +170,7 @@ function MainApp() {
 
   if (view === 'home') {
     return (
-      <div className="min-h-screen py-20 bg-[var(--color-bg-primary)] overflow-x-hidden">
+      <div className="min-h-screen pt-0 bg-[var(--color-bg-primary)] overflow-x-hidden">
         <LandingScreen 
           onStart={handleStart} 
           onStartTutorial={handleStartTour} 

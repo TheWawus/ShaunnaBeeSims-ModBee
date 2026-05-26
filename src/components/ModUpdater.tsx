@@ -179,18 +179,37 @@ async function checkResourceAgainstTdesc(tuned: TunedResource): Promise<{ upToDa
     };
   }
 
-  // Heuristic: Check if the number of top-level tunable fields has changed significantly
-  const modFields = Array.from(tuned.dom.querySelector('I')?.children || []).filter(c => c.getAttribute('n')).length;
-  const tdescFields = Array.from(troot?.children || []).filter(c => c.getAttribute('n')).length;
+  // Structural Diff: Check if fields used in the mod still exist in the TDESC
+  const modUsedFields = new Set<string>();
+  const collectUsed = (el: Element) => {
+    const n = el.getAttribute('n');
+    if (n) modUsedFields.add(n);
+    Array.from(el.children).forEach(collectUsed);
+  };
+  const modRoot = tuned.dom.querySelector('I');
+  if (modRoot) collectUsed(modRoot);
+
+  const missingFields = Array.from(modUsedFields).filter(f => !schema.allValidNames.has(f));
   
-  // This is a proxy for "The game has added or removed tunables for this instance"
-  // only applicable if the mod is an EA resource override (usually IDs < 10^16)
+  if (missingFields.length > 0) {
+    return {
+      upToDate: false,
+      message: `Tuning contains ${missingFields.length} fields that no longer exist in the game schema (e.g., "${missingFields[0]}").`
+    };
+  }
+
+  // Check if any REQUIRED fields in the TDESC are missing in the mod (only for EA overrides)
   const isEAResource = BigInt(tuned.instanceId) < 0x0100000000000000n;
-  if (isEAResource && modFields > 0 && tdescFields > 0 && modFields !== tdescFields) {
-     return { 
-       upToDate: false, 
-       message: `Structure mismatch: Game has ${tdescFields} tunables, your mod has ${modFields}. Highly likely outdated.` 
-     };
+  if (isEAResource && modRoot) {
+    const modTopLevelFields = new Set(Array.from(modRoot.children).map(c => c.getAttribute('n')).filter(Boolean) as string[]);
+    const missingRequired = schema.fields.filter(f => f.required && !modTopLevelFields.has(f.name));
+    
+    if (missingRequired.length > 0) {
+      return {
+        upToDate: false,
+        message: `Missing ${missingRequired.length} required fields from the latest game schema (e.g., "${missingRequired[0].name}").`
+      };
+    }
   }
 
   return { upToDate: true };

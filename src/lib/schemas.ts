@@ -129,23 +129,25 @@ export const ELEMENT_SCHEMAS: Partial<Record<ModEntityType, ElementSchema>> = {
     description: 'A collection of effects (Buffs, Stats, Traits).',
     fields: [
       { id: 'internal_name', label: 'Internal Name', type: 'string' },
-      { id: 'display_name', label: 'Display Name', type: 'string' },
       { id: 'variant', label: 'Loot Pattern', type: 'enum', options: [
-        { value: 'buff', label: 'Apply Buff' },
-        { value: 'buff_removal', label: 'Remove Buff' },
-        { value: 'know_trait', label: 'Learn Trait' },
-        { value: 'remove_trait', label: 'Remove Trait' },
-        { value: 'stat_set_max', label: 'Reset Commodity' },
-        { value: 'money', label: 'Money Reward' },
-        { value: 'statistic_change', label: 'Stat Change' },
+        { value: 'buff', label: 'Apply Buff (buff_loot_op)' },
+        { value: 'buff_removal', label: 'Remove Buff (buff_removal)' },
+        { value: 'know_trait', label: 'Learn/Add Trait (trait_add)' },
+        { value: 'remove_trait', label: 'Remove Trait (trait_remove)' },
+        { value: 'stat_set_max', label: 'Reset Commodity (statistic_set_max)' },
+        { value: 'money', label: 'Money Reward (money_loot)' },
+        { value: 'statistic_change', label: 'Stat Change (statistic_change)' },
         { value: 'skill_level_change', label: 'Skill Level Change' },
-        { value: 'relationship_bit', label: 'Relationship Bit Add' }
+        { value: 'relationship_bit', label: 'Relationship Bit Add' },
+        { value: 'notification', label: 'Show Notification' }
       ]},
-      { id: 'amount', label: 'Amount (Money/Stat)', type: 'integer', default: 0, advanced: true },
+      { id: 'amount', label: 'Amount (Money/Stat)', type: 'integer', default: 0 },
       { id: 'buff_ref', label: 'Buff Target', type: 'reference', targetType: 'Buff' },
       { id: 'trait_ref', label: 'Trait Target', type: 'reference', targetType: 'Trait' },
       { id: 'stat_ref', label: 'Statistic/Commodity Target', type: 'reference', targetType: 'Commodity' },
-      { id: 'notification_text', label: 'Notification Text', type: 'string' }
+      { id: 'rel_bit_ref', label: 'Relationship Bit Target', type: 'reference', targetType: 'RelBit' },
+      { id: 'notification_title', label: 'Notification Title', type: 'string' },
+      { id: 'notification_text', label: 'Notification Text', type: 'textarea' }
     ]
   },
   MixerInteraction: {

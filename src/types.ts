@@ -9,7 +9,7 @@ export type ModEntityType =
   | 'SimpleWantAndFearSet' | 'SituationActivity' | 'SituationSocialEvent' 
   | 'SituationGoal' | 'SituationGoalSet' | 'SituationJob' | 'Situation' | 'SocialInteraction' | 'Statistic' 
   | 'SuperInteraction' | 'Trait' | 'WantFear' | 'WantSetExtension' 
-  | 'XmlInjectorSnippet' | 'ZoneDirector';
+  | 'XmlInjectorSnippet' | 'ZoneDirector' | 'GenericElement';
 
 export interface ModProjectInfo {
   author: string;
